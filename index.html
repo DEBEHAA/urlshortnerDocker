@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>URL Shortener</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 15px;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Background image overlay */
+    body::before {
+      content: '';
+      background: url('bg.png') no-repeat center center;
+      background-size: cover;
+      opacity: 0.50;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+      padding: 40px 30px 50px 30px;
+      max-width: 1300px;
+      width: 100%;
+      z-index: 1;
+      backdrop-filter: saturate(180%) blur(10px);
+    }
+
+    /* Logo */
+    .logo {
+      display: block;
+      margin: 0 auto 20px;
+      max-width: 220px;
+    }
+
+    h1 {
+      font-weight: 800;
+      color: #4b3e90;
+      text-align: center;
+      text-shadow: 1px 1px 5px rgba(0,0,0,0.1);
+      margin-bottom: 1.5rem;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    textarea {
+      font-size: 1.1rem;
+      padding: 1rem;
+      border-radius: 10px;
+      border: 2px solid #667eea;
+      resize: vertical;
+      transition: border-color 0.3s ease;
+    }
+
+    textarea:focus {
+      border-color: #764ba2;
+      outline: none;
+      box-shadow: 0 0 8px #764ba2;
+    }
+
+    button[type="submit"] {
+      align-self: center;
+      background: #764ba2;
+      color: white;
+      border: none;
+      padding: 0.75rem 2.5rem;
+      font-size: 1.2rem;
+      font-weight: 700;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 6px 15px rgba(118, 75, 162, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    button[type="submit"]:hover {
+      background: #5a357a;
+    }
+
+    button[type="submit"] img {
+      height: 24px;
+    }
+
+    #result {
+      margin-top: 2rem;
+      color: #3b2f72;
+    }
+
+    .list-group-item {
+      word-break: break-word;
+      font-size: 1.05rem;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+      background: #f0f0ff;
+      border: 1px solid #ddd;
+      box-shadow: 1px 1px 6px rgba(102, 126, 234, 0.15);
+    }
+
+    .list-group-item a {
+      color: #764ba2;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .list-group-item a:hover {
+      text-decoration: underline;
+    }
+
+    .spinner-border {
+      display: block;
+      margin: 2rem auto;
+      color: #764ba2;
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 30px 20px 40px 20px;
+      }
+      button[type="submit"] {
+        padding: 0.6rem 2rem;
+        font-size: 1.1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="logo.png" alt="Short URL Logo" class="logo">
+    <h1>High-Performance URL Shortener</h1>
+
+    <form id="shortenForm">
+      <div class="mb-3">
+        <label for="urlInput" class="form-label">Enter URLs</label>
+        <textarea
+          class="form-control"
+          id="urlInput"
+          rows="5"
+          placeholder="Paste URLs here..."
+          required
+        ></textarea>
+      </div>
+      <button type="submit">
+        <img src="icon.jpeg" alt="Scissor Icon">
+        Shorten URLs
+      </button>
+    </form>
+
+    <div id="result"></div>
+  </div>
+
+<script>
+  const form = document.getElementById('shortenForm');
+  const urlInput = document.getElementById('urlInput');
+  const resultDiv = document.getElementById('result');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const rawUrls = urlInput.value.trim();
+    if (!rawUrls) return;
+
+    const urls = rawUrls.split('\n').map(u => u.trim()).filter(Boolean);
+    if (urls.length === 0) return;
+
+    resultDiv.innerHTML = `
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>`;
+
+    try {
+      const res = await fetch('/shorten', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ urls }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${errText}</div>`;
+        return;
+      }
+
+      const data = await res.json();
+      let html = '<h3>Shortened URLs:</h3><ul class="list-group">';
+      for (const item of data) {
+        html += `
+          <li class="list-group-item">
+            
+            <div>Short URL: <a href="${item.shortUrl}" target="_blank" rel="noopener noreferrer">${item.shortUrl}</a></div>
+          </li>`;
+      }
+      html += '</ul>';
+      resultDiv.innerHTML = html;
+
+    } catch (error) {
+      resultDiv.innerHTML = `<div class="alert alert-danger">Network error: ${error.message}</div>`;
+    }
+  });
+</script>
+
+</body>
+</html>
